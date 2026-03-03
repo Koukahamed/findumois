@@ -52,18 +52,18 @@ function getMoisLabel(key) {
 
 const MESSAGES = {
   safe: [
-    "Tu gères bien djai ! 💪",
-    "Chef, tu es sérieux avec ça 🎯",
+    "Tu gères bien ton djai ! 💪",
+    "chef(fe), tu es sérieux avec l'objectif 🎯",
     "Budget sous contrôle, on valide ! ✅",
   ],
   warning: [
-    "Chef... doucement 😅",
+    "chef(fe)... doucement 😅",
     "Hum hum... tu commences à forcer là 👀",
     "Attention hein, on n'est pas encore fin du mois 😬",
   ],
   danger: [
-    "Fin du mois va être sport... 🔴",
-    "Mon ami, il faut reposer la main là 😭",
+    "Fin du mois va être cardio... 🔴",
+    "Mon ami(e), il faut reposer la main là 😭",
     "Dieu seul sait comment tu vas finir ce mois 😂",
   ],
 };
@@ -491,7 +491,7 @@ function getViralMessage(pct, restant, topCat, jour) {
   }
   if (pct >= 80) {
     const msgs = [
-      `Chef... doucement hein 😅 J'ai déjà dépensé ${pct}% de mon budget ce mois-ci`,
+      `chef(fe)... doucement hein 😅 J'ai déjà dépensé ${pct}% de mon budget ce mois-ci`,
       `${topCat ? topCat.emoji + " " + topCat.label + " a mangé le plus dans mon budget ce mois" : "Attention, " + pct + "% du budget est parti"} 👀`,
       `Il me reste ${formatFCFA(restant)} pour finir le mois... Je gère 😬`,
     ];
@@ -1408,7 +1408,7 @@ export default function App() {
     const alerted = localStorage.getItem("fdm_alerted_80_" + moisCourant);
     if (pct >= 80 && !alerted && Notification.permission === "granted") {
       new Notification("⚠️ Fin du Mois", {
-        body: `Chef... tu as dépensé ${pct}% de ton budget ce mois-ci. Doucement hein 😅`,
+        body: `chef(fe)... tu as dépensé ${pct}% de ton budget ce mois-ci. Doucement hein 😅`,
         icon: "/favicon.ico",
       });
       localStorage.setItem("fdm_alerted_80_" + moisCourant, "1");
