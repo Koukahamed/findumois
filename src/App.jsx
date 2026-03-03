@@ -1,5 +1,24 @@
 import { useState, useRef, useEffect } from "react";
 
+// ─── FREEMIUM ─────────────────────────────────────────────────────────────────
+const PREMIUM_KEY = "fdm_premium";
+const PREMIUM_FEATURES = {
+  calendrier:   "Calendrier du mois",
+  comparaison:  "Comparaison mois précédent",
+  historique:   "Historique multi-mois",
+  export_excel: "Export Excel",
+  export_png:   "Téléchargement image PNG",
+  notifications:"Rappels & notifications",
+};
+
+function usePremium() {
+  const [isPremium, setIsPremium] = useState(() => {
+    try { return localStorage.getItem(PREMIUM_KEY) === "true"; } catch { return false; }
+  });
+  const unlock = () => { localStorage.setItem(PREMIUM_KEY, "true"); setIsPremium(true); };
+  return { isPremium, unlock };
+}
+
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const CATEGORIES = [
   { id: "nourriture", label: "Nourriture", emoji: "🍚" },
@@ -22,20 +41,29 @@ const INCOME_SOURCES = [
   { id: "autre_entree", label: "Autre",          emoji: "✨" },
 ];
 
+// ── Helpers date ─────────────────────────────────────────────────────────────
+function getMoisKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+function getMoisLabel(key) {
+  const [y, m] = key.split("-");
+  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+}
+
 const MESSAGES = {
   safe: [
-    "Tu gères bien ton djai ! 💪",
-    "Chef(fe), tu es sérieux avec ça 🎯",
+    "Tu gères bien djai ! 💪",
+    "Chef, tu es sérieux avec ça 🎯",
     "Budget sous contrôle, on valide ! ✅",
   ],
   warning: [
-    "Chef(fe)... doucement 😅",
+    "Chef... doucement 😅",
     "Hum hum... tu commences à forcer là 👀",
     "Attention hein, on n'est pas encore fin du mois 😬",
   ],
   danger: [
-    "Fin du mois va être cardio... 🔴",
-    "Mon ami(e), il faut reposer la main là 😭",
+    "Fin du mois va être sport... 🔴",
+    "Mon ami, il faut reposer la main là 😭",
     "Dieu seul sait comment tu vas finir ce mois 😂",
   ],
 };
@@ -57,6 +85,82 @@ function getRandMessage(level) {
 }
 
 // ─── SCREENS ──────────────────────────────────────────────────────────────────
+
+// ─── PREMIUM GATE ─────────────────────────────────────────────────────────────
+const WHATSAPP_NUMBER = "2250798177784";
+const WHATSAPP_MSG = encodeURIComponent("Bonjour ! Je veux passer en Premium sur Fin du Mois 💰 Comment faire ?");
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_MSG}`;
+
+function UpgradeModal({ feature, onClose }) {
+  return (
+    <div style={styles.sheetOverlay} onClick={onClose}>
+      <div style={{ ...styles.sheet, animation: "slideUp 0.35s cubic-bezier(.22,1,.36,1)", textAlign: "center" }} onClick={e => e.stopPropagation()}>
+        <div style={styles.sheetHandle} />
+        <div style={{ fontSize: 52, marginBottom: 8 }}>🔒</div>
+        <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 800, color: "#111827", marginBottom: 8 }}>
+          Fonctionnalité Premium
+        </h2>
+        <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 6 }}>
+          <strong style={{ color: "#111827" }}>{feature}</strong> est réservé aux utilisateurs Premium.
+        </p>
+        <p style={{ color: "#6b7280", fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+          Débloque tout pour seulement<br />
+          <span style={{ color: "#16a34a", fontWeight: 900, fontSize: 24 }}>500 FCFA</span>
+          <span style={{ color: "#9ca3af" }}> / mois</span>
+        </p>
+
+        {/* Avantages */}
+        <div style={{ background: "#f0fdf4", borderRadius: 16, padding: "14px 16px", marginBottom: 20, textAlign: "left" }}>
+          {Object.values(PREMIUM_FEATURES).map((f, i) => (
+            <p key={i} style={{ fontSize: 13, color: "#15803d", fontWeight: 700, padding: "4px 0", display: "flex", alignItems: "center", gap: 8 }}>
+              <span>✅</span> {f}
+            </p>
+          ))}
+        </div>
+
+        {/* CTA WhatsApp */}
+        <a
+          href={WHATSAPP_URL}
+          target="_blank"
+          rel="noreferrer"
+          style={{ ...styles.btn, background: "#25D366", marginBottom: 8, display: "block", textDecoration: "none", color: "#fff" }}
+        >
+          📲 Contacter sur WhatsApp
+        </a>
+        <p style={{ color: "#9ca3af", fontSize: 11, marginBottom: 16 }}>
+          On te répond rapidement · MTN MoMo · Orange Money · Wave
+        </p>
+        <button style={styles.btnGhost} onClick={onClose}>Pas maintenant</button>
+      </div>
+    </div>
+  );
+}
+
+function PremiumGate({ feature, featureKey, isPremium, onRequestUpgrade, children, blur = false }) {
+  if (isPremium) return children;
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ filter: blur ? "blur(4px)" : "none", pointerEvents: "none", userSelect: "none", opacity: 0.5 }}>
+        {children}
+      </div>
+      <div
+        onClick={() => onRequestUpgrade(feature)}
+        style={{
+          position: "absolute", inset: 0,
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          background: "rgba(255,255,255,0.85)",
+          borderRadius: 16, cursor: "pointer",
+          gap: 6,
+        }}
+      >
+        <span style={{ fontSize: 28 }}>🔒</span>
+        <p style={{ fontWeight: 800, color: "#111827", fontSize: 14 }}>{feature}</p>
+        <p style={{ color: "#16a34a", fontWeight: 700, fontSize: 12 }}>Débloquer · 500 FCFA/mois</p>
+      </div>
+    </div>
+  );
+}
 
 function OnboardingScreen({ onStart }) {
   const [salaire, setSalaire] = useState("");
@@ -148,6 +252,7 @@ function AddExpenseSheet({ onAdd, onClose }) {
   const [cat, setCat] = useState(null);
   const [libelle, setLibelle] = useState("");
   const [note, setNote] = useState("");
+  const [dateVal, setDateVal] = useState(new Date().toISOString().slice(0, 10));
   const [shake, setShake] = useState(false);
   const [shakeLibelle, setShakeLibelle] = useState(false);
   const libelleRef = useRef(null);
@@ -174,7 +279,7 @@ function AddExpenseSheet({ onAdd, onClose }) {
       libelleRef.current?.focus();
       return;
     }
-    onAdd({ montant: m, categorie: cat, libelle: isDivers ? libelle.trim() : "", note, date: new Date().toISOString() });
+    onAdd({ montant: m, categorie: cat, libelle: isDivers ? libelle.trim() : "", note, date: new Date(dateVal).toISOString() });
     onClose();
   };
 
@@ -251,6 +356,20 @@ function AddExpenseSheet({ onAdd, onClose }) {
           />
         )}
 
+        {/* Date */}
+        <div style={{ marginTop: 12 }}>
+          <p style={{ ...styles.label, marginBottom: 6 }}>Date</p>
+          <div style={{ ...styles.inputWrap }}>
+            <input
+              style={{ ...styles.input, fontSize: 15, fontWeight: 600 }}
+              type="date"
+              value={dateVal}
+              onChange={e => setDateVal(e.target.value)}
+              max={new Date().toISOString().slice(0, 10)}
+            />
+          </div>
+        </div>
+
         <button style={{ ...styles.btn, marginTop: 16 }} onClick={handleAdd}>
           + Ajouter la dépense
         </button>
@@ -263,6 +382,7 @@ function AddIncomeSheet({ onAdd, onClose }) {
   const [montant, setMontant] = useState("");
   const [source, setSource] = useState(null);
   const [libelle, setLibelle] = useState("");
+  const [dateVal, setDateVal] = useState(new Date().toISOString().slice(0, 10));
   const [shake, setShake] = useState(false);
   const libelleRef = useRef(null);
 
@@ -276,7 +396,7 @@ function AddIncomeSheet({ onAdd, onClose }) {
   const handleAdd = () => {
     const m = Number(montant.replace(/[\s\u00a0\u202f]/g, ""));
     if (!m || !source) { setShake(true); setTimeout(() => setShake(false), 500); return; }
-    onAdd({ montant: m, source, libelle: isAutre ? libelle.trim() : "", date: new Date().toISOString() });
+    onAdd({ montant: m, source, libelle: isAutre ? libelle.trim() : "", date: new Date(dateVal).toISOString() });
     onClose();
   };
 
@@ -336,6 +456,20 @@ function AddIncomeSheet({ onAdd, onClose }) {
           </div>
         )}
 
+        {/* Date */}
+        <div style={{ marginTop: 12 }}>
+          <p style={{ ...styles.label, marginBottom: 6 }}>Date</p>
+          <div style={{ ...styles.inputWrap }}>
+            <input
+              style={{ ...styles.input, fontSize: 15, fontWeight: 600 }}
+              type="date"
+              value={dateVal}
+              onChange={e => setDateVal(e.target.value)}
+              max={new Date().toISOString().slice(0, 10)}
+            />
+          </div>
+        </div>
+
         <button style={{ ...styles.btn, marginTop: 16, background: "linear-gradient(135deg, #16a34a, #15803d)" }} onClick={handleAdd}>
           + Enregistrer l'entrée
         </button>
@@ -379,7 +513,7 @@ function getViralMessage(pct, restant, topCat, jour) {
   return { msg: msgs[Math.floor(Math.random()*msgs.length)], emoji: "🏆" };
 }
 
-function ShareCard({ salaire, depenses, entrees, epargne, onClose }) {
+function ShareCard({ salaire, depenses, entrees, epargne, onClose, isPremium, requestUpgrade }) {
   const cardRef = useRef(null);
   const [downloading, setDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -514,8 +648,8 @@ function ShareCard({ salaire, depenses, entrees, epargne, onClose }) {
           <button style={{ ...styles.btnGhost, flex: 1 }} onClick={handleCopy}>
             {copied ? "✅ Copié !" : "📋 Copier"}
           </button>
-          <button style={{ ...styles.btnGhost, flex: 1 }} onClick={handleDownload} disabled={downloading}>
-            {downloading ? "⏳..." : "🖼️ Image PNG"}
+          <button style={{ ...styles.btnGhost, flex: 1 }} onClick={isPremium ? handleDownload : () => requestUpgrade && requestUpgrade("Téléchargement image PNG")} disabled={downloading}>
+            {downloading ? "⏳..." : isPremium ? "🖼️ Image PNG" : "🔒 Image PNG"}
           </button>
         </div>
         <button style={{ ...styles.btnGhost, marginTop: 8 }} onClick={onClose}>Fermer</button>
@@ -524,10 +658,153 @@ function ShareCard({ salaire, depenses, entrees, epargne, onClose }) {
   );
 }
 
+// ─── CALENDAR VIEW ────────────────────────────────────────────────────────────
+function CalendarView({ depenses, entrees, status }) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const [selectedDay, setSelectedDay] = useState(null);
+
+  // Nombre de jours dans le mois
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // Jour de la semaine du 1er (0=dim, ajusté pour lundi=0)
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
+
+  // Indexer dépenses et entrées par jour
+  const depByDay = {};
+  depenses.forEach(d => {
+    const day = new Date(d.date).getDate();
+    if (!depByDay[day]) depByDay[day] = [];
+    depByDay[day].push(d);
+  });
+  const entByDay = {};
+  entrees.forEach(e => {
+    const day = new Date(e.date).getDate();
+    if (!entByDay[day]) entByDay[day] = [];
+    entByDay[day].push(e);
+  });
+
+  const jours = ["L", "M", "M", "J", "V", "S", "D"];
+  const today = now.getDate();
+
+  // Dépenses du jour sélectionné
+  const selDeps = selectedDay ? (depByDay[selectedDay] || []) : [];
+  const selEnts = selectedDay ? (entByDay[selectedDay] || []) : [];
+  const selTotal = selDeps.reduce((s,d) => s + d.montant, 0);
+  const selTotalEnts = selEnts.reduce((s,e) => s + e.montant, 0);
+
+  return (
+    <div style={{ padding: "0 16px 120px" }}>
+      {/* Header calendrier */}
+      <div style={{ background: "#fff", borderRadius: 20, padding: "16px", marginBottom: 12 }}>
+        <h3 style={{ ...styles.sectionTitle, paddingTop: 0, marginBottom: 14, textAlign: "center" }}>
+          📅 {new Date(year, month).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+        </h3>
+
+        {/* Jours de la semaine */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
+          {jours.map((j, i) => (
+            <div key={i} style={{ textAlign: "center", fontSize: 11, fontWeight: 800, color: "#9ca3af", padding: "4px 0" }}>{j}</div>
+          ))}
+        </div>
+
+        {/* Jours du mois */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+          {/* Cellules vides avant le 1er */}
+          {Array.from({ length: firstDow }).map((_, i) => <div key={"e" + i} />)}
+
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1;
+            const hasDep = !!depByDay[day];
+            const hasEnt = !!entByDay[day];
+            const isToday = day === today;
+            const isSelected = day === selectedDay;
+            const totalDep = hasDep ? depByDay[day].reduce((s,d) => s + d.montant, 0) : 0;
+
+            return (
+              <div
+                key={day}
+                onClick={() => setSelectedDay(isSelected ? null : day)}
+                style={{
+                  borderRadius: 10,
+                  padding: "6px 2px",
+                  textAlign: "center",
+                  cursor: hasDep || hasEnt ? "pointer" : "default",
+                  background: isSelected ? status.color : isToday ? "#f0fdf4" : "transparent",
+                  border: isToday && !isSelected ? "2px solid #22c55e" : "2px solid transparent",
+                  transition: "all 0.15s",
+                }}
+              >
+                <p style={{ fontSize: 13, fontWeight: isToday ? 800 : 600, color: isSelected ? "#fff" : isToday ? "#16a34a" : "#374151", marginBottom: 2 }}>
+                  {day}
+                </p>
+                <div style={{ display: "flex", justifyContent: "center", gap: 2, flexWrap: "wrap" }}>
+                  {hasDep && <div style={{ width: 6, height: 6, borderRadius: "50%", background: isSelected ? "#fff" : "#ef4444" }} />}
+                  {hasEnt && <div style={{ width: 6, height: 6, borderRadius: "50%", background: isSelected ? "#fff" : "#22c55e" }} />}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Légende */}
+        <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 12 }}>
+          <span style={{ fontSize: 11, color: "#9ca3af", display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", display: "inline-block" }} /> Dépense
+          </span>
+          <span style={{ fontSize: 11, color: "#9ca3af", display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} /> Entrée
+          </span>
+        </div>
+      </div>
+
+      {/* Détail du jour sélectionné */}
+      {selectedDay && (selDeps.length > 0 || selEnts.length > 0) && (
+        <div style={{ background: "#fff", borderRadius: 20, padding: "16px", animation: "fadeIn 0.2s" }}>
+          <h3 style={{ ...styles.sectionTitle, paddingTop: 0, marginBottom: 12 }}>
+            {selectedDay} {new Date(year, month).toLocaleDateString("fr-FR", { month: "long" })}
+          </h3>
+
+          {selEnts.length > 0 && selEnts.map((e, i) => (
+            <div key={i} style={{ ...styles.txItem, borderLeft: "3px solid #22c55e", marginBottom: 8 }}>
+              <span style={styles.txEmoji}>{e.source.emoji}</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ ...styles.txCat, color: "#15803d" }}>{e.source.id === "autre_entree" && e.libelle ? e.libelle : e.source.label}</p>
+              </div>
+              <p style={{ ...styles.txAmount, color: "#16a34a" }}>+{formatFCFA(e.montant)}</p>
+            </div>
+          ))}
+
+          {selDeps.length > 0 && selDeps.map((d, i) => (
+            <div key={i} style={{ ...styles.txItem, marginBottom: 8 }}>
+              <span style={styles.txEmoji}>{d.categorie.emoji}</span>
+              <div style={{ flex: 1 }}>
+                <p style={styles.txCat}>{d.categorie.id === "divers" && d.libelle ? d.libelle : d.categorie.label}</p>
+              </div>
+              <p style={{ ...styles.txAmount, color: "#ef4444" }}>-{formatFCFA(d.montant)}</p>
+            </div>
+          ))}
+
+          <div style={{ borderTop: "2px solid #f3f4f6", paddingTop: 10, marginTop: 4 }}>
+            {selTotalEnts > 0 && <p style={{ fontSize: 13, color: "#16a34a", fontWeight: 700, textAlign: "right" }}>+{formatFCFA(selTotalEnts)}</p>}
+            {selTotal > 0 && <p style={{ fontSize: 13, color: "#ef4444", fontWeight: 700, textAlign: "right" }}>-{formatFCFA(selTotal)}</p>}
+          </div>
+        </div>
+      )}
+
+      {selectedDay && selDeps.length === 0 && selEnts.length === 0 && (
+        <div style={{ textAlign: "center", padding: 20, color: "#9ca3af", fontSize: 14 }}>
+          Aucune opération ce jour
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── DASHBOARD VIEW (Camembert + Stats) ──────────────────────────────────────
 const PIE_COLORS = ["#22c55e","#f97316","#3b82f6","#a855f7","#ec4899","#14b8a6","#f59e0b","#ef4444","#6366f1"];
 
-function DashboardView({ config, depenses, entrees }) {
+function DashboardView({ config, depenses, entrees, historique, isPremium, requestUpgrade }) {
   const { salaire, epargne } = config;
   const totalEntrees = entrees.reduce((s, e) => s + e.montant, 0);
   const budget = salaire + totalEntrees;
@@ -594,6 +871,48 @@ function DashboardView({ config, depenses, entrees }) {
           </div>
         ))}
       </div>
+
+      {/* Comparaison mois précédent — Premium */}
+      {(() => {
+        const keys = Object.keys(historique || {}).sort();
+        if (keys.length === 0) return null;
+        const lastKey = keys[keys.length - 1];
+        const last = historique[lastKey];
+        const lastTotal = (last.depenses || []).reduce((s, d) => s + d.montant, 0);
+        const lastBudget = last.config.salaire + (last.entrees || []).reduce((s, e) => s + e.montant, 0);
+        const lastPct = lastBudget > 0 ? Math.round((lastTotal / lastBudget) * 100) : 0;
+        const diff = total - lastTotal;
+        const diffPct = lastTotal > 0 ? Math.round(((total - lastTotal) / lastTotal) * 100) : 0;
+        return isPremium ? (
+          <div style={{ background: "#fff", borderRadius: 20, padding: "16px", marginBottom: 16 }}>
+            <h3 style={{ ...styles.sectionTitle, paddingTop: 0, marginBottom: 12 }}>📅 vs {getMoisLabel(lastKey)}</h3>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ flex: 1, background: "#f9fafb", borderRadius: 14, padding: "12px" }}>
+                <p style={{ color: "#9ca3af", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 4 }}>Mois dernier</p>
+                <p style={{ fontWeight: 800, fontSize: 16, color: "#374151" }}>{formatFCFA(lastTotal)}</p>
+                <p style={{ color: "#9ca3af", fontSize: 12, marginTop: 2 }}>{lastPct}% du budget</p>
+              </div>
+              <div style={{ flex: 1, background: diff > 0 ? "#fef2f2" : "#f0fdf4", borderRadius: 14, padding: "12px" }}>
+                <p style={{ color: "#9ca3af", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 4 }}>Évolution</p>
+                <p style={{ fontWeight: 800, fontSize: 16, color: diff > 0 ? "#ef4444" : "#16a34a" }}>
+                  {diff > 0 ? "+" : ""}{formatFCFA(diff)}
+                </p>
+                <p style={{ color: diff > 0 ? "#ef4444" : "#16a34a", fontSize: 12, marginTop: 2, fontWeight: 700 }}>
+                  {diff > 0 ? "▲" : "▼"} {Math.abs(diffPct)}% {diff > 0 ? "de plus" : "de moins"}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div onClick={() => requestUpgrade && requestUpgrade("Comparaison mois précédent")} style={{ background: "#fff", borderRadius: 20, padding: "16px", marginBottom: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 28 }}>🔒</span>
+            <div>
+              <p style={{ fontWeight: 800, color: "#111827", fontSize: 14 }}>Comparaison mois précédent</p>
+              <p style={{ color: "#16a34a", fontSize: 12, fontWeight: 700 }}>Débloquer · 500 FCFA/mois</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Camembert SVG */}
       <div style={{ background: "#fff", borderRadius: 20, padding: "20px 16px", marginBottom: 16 }}>
@@ -669,12 +988,14 @@ function DashboardView({ config, depenses, entrees }) {
   );
 }
 
-function Dashboard({ config, depenses, entrees, onAddExpense, onAddEntree, onDeleteExpense, onDeleteEntree, onReset }) {
+function Dashboard({ config, depenses, entrees, historique, onAddExpense, onAddEntree, onDeleteExpense, onDeleteEntree, onReset, isPremium, onUnlock }) {
   const [showAdd, setShowAdd] = useState(false);
   const [showIncome, setShowIncome] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [addedIdx, setAddedIdx] = useState(null);
-  const [activeTab, setActiveTab] = useState("home"); // "home" | "dashboard"
+  const [activeTab, setActiveTab] = useState("home"); // "home" | "dashboard" | "calendrier"
+  const [upgradeFeature, setUpgradeFeature] = useState(null);
+  const requestUpgrade = (feature) => setUpgradeFeature(feature);
 
   // ── Export Excel ──────────────────────────────────────────────────────────
   const handleExportExcel = async () => {
@@ -777,7 +1098,9 @@ function Dashboard({ config, depenses, entrees, onAddExpense, onAddEntree, onDel
           <h1 style={styles.headerTitle}>Fin du Mois 💰</h1>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <button style={{ ...styles.exportBtn }} onClick={handleExportExcel} title="Exporter Excel">📥 Excel</button>
+          <button style={{ ...styles.exportBtn }} onClick={isPremium ? handleExportExcel : () => requestUpgrade("Export Excel")} title="Exporter Excel">
+            {isPremium ? "📥 Excel" : "🔒 Excel"}
+          </button>
           <button style={styles.resetBtn} onClick={onReset} title="Recommencer">⚙️</button>
         </div>
       </div>
@@ -788,12 +1111,17 @@ function Dashboard({ config, depenses, entrees, onAddExpense, onAddEntree, onDel
           🏠 Accueil
         </button>
         <button style={{ ...styles.tabBtn, ...(activeTab === "dashboard" ? styles.tabBtnActive : {}) }} onClick={() => setActiveTab("dashboard")}>
-          📊 Dashboard
+          📊 Stats
+        </button>
+        <button style={{ ...styles.tabBtn, ...(activeTab === "calendrier" ? styles.tabBtnActive : {}) }} onClick={() => isPremium ? setActiveTab("calendrier") : requestUpgrade("Calendrier du mois")}>
+          {isPremium ? "📅" : "🔒"} Calendrier
         </button>
       </div>
 
-      {activeTab === "dashboard" ? (
-        <DashboardView config={config} depenses={depenses} entrees={entrees} />
+      {activeTab === "calendrier" ? (
+        <CalendarView depenses={depenses} entrees={entrees} status={status} />
+      ) : activeTab === "dashboard" ? (
+        <DashboardView config={config} depenses={depenses} entrees={entrees} historique={historique} isPremium={isPremium} requestUpgrade={requestUpgrade} />
       ) : (<>
       {/* Status card */}
       <div style={{ ...styles.statusCard, background: `linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)` }}>
@@ -803,7 +1131,7 @@ function Dashboard({ config, depenses, entrees, onAddExpense, onAddEntree, onDel
           </span>
         </div>
         <p style={styles.statusMessage}>{statusMessage}</p>
-
+        
         {/* Progress ring area */}
         <div style={styles.progressWrap}>
           <div style={styles.progressTrack}>
@@ -997,29 +1325,37 @@ function Dashboard({ config, depenses, entrees, onAddExpense, onAddEntree, onDel
         <AddIncomeSheet onAdd={(e) => { onAddEntree(e); setShowIncome(false); }} onClose={() => setShowIncome(false)} />
       )}
       {showShare && (
-        <ShareCard salaire={salaire} depenses={depenses} entrees={entrees} epargne={epargne} onClose={() => setShowShare(false)} />
+        <ShareCard salaire={salaire} depenses={depenses} entrees={entrees} epargne={epargne} onClose={() => setShowShare(false)} isPremium={isPremium} requestUpgrade={requestUpgrade} />
+      )}
+      {upgradeFeature && (
+        <UpgradeModal feature={upgradeFeature} onClose={() => setUpgradeFeature(null)} />
       )}
     </div>
   );
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
-const STORAGE_KEY = "findumois_v2";
+const STORAGE_KEY = "findumois_v3";
 
 export default function App() {
+  const { isPremium, unlock } = usePremium();
   const [config, setConfig] = useState(null);
   const [depenses, setDepenses] = useState([]);
   const [entrees, setEntrees] = useState([]);
+  // historique : { [moisKey]: { config, depenses, entrees } }
+  const [historique, setHistorique] = useState({});
+  const moisCourant = getMoisKey();
 
   // Load from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        const { config: c, depenses: d, entrees: en } = JSON.parse(saved);
-        setConfig(c);
-        setDepenses(d || []);
-        setEntrees(en || []);
+        const data = JSON.parse(saved);
+        setConfig(data.config || null);
+        setDepenses(data.depenses || []);
+        setEntrees(data.entrees || []);
+        setHistorique(data.historique || {});
       }
     } catch {}
   }, []);
@@ -1027,9 +1363,17 @@ export default function App() {
   // Save to localStorage on change
   useEffect(() => {
     if (config) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ config, depenses, entrees }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ config, depenses, entrees, historique }));
     }
-  }, [config, depenses, entrees]);
+  }, [config, depenses, entrees, historique]);
+
+  // ── Archive le mois courant dans l'historique ──
+  const archiverMois = (cfg, deps, ents) => {
+    setHistorique(prev => ({
+      ...prev,
+      [moisCourant]: { config: cfg, depenses: deps, entrees: ents, archivedAt: new Date().toISOString() },
+    }));
+  };
 
   const handleStart = (cfg) => setConfig(cfg);
   const handleAddExpense = (dep) => setDepenses(prev => [...prev, dep]);
@@ -1038,13 +1382,51 @@ export default function App() {
   const handleDeleteEntree = (idx) => setEntrees(prev => prev.filter((_, i) => i !== idx));
 
   const handleReset = () => {
-    if (window.confirm("Recommencer un nouveau mois ?")) {
-      localStorage.removeItem(STORAGE_KEY);
+    if (window.confirm("Nouveau mois ? Le mois actuel sera archivé dans l'historique.")) {
+      // Archiver avant de reset
+      if (config) archiverMois(config, depenses, entrees);
       setConfig(null);
       setDepenses([]);
       setEntrees([]);
     }
   };
+
+  // ── Notifications (Premium only) ──────────────────────────────────────────
+  useEffect(() => {
+    if (!isPremium) return;
+    if (!("Notification" in window)) return;
+    // Demande permission au premier lancement
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+    if (!config) return;
+    const totalDep = depenses.reduce((s, d) => s + d.montant, 0);
+    const totalEnt = entrees.reduce((s, e) => s + e.montant, 0);
+    const budget = config.salaire + totalEnt;
+    const pct = budget > 0 ? Math.round((totalDep / budget) * 100) : 0;
+    // Alerte 80%
+    const alerted = localStorage.getItem("fdm_alerted_80_" + moisCourant);
+    if (pct >= 80 && !alerted && Notification.permission === "granted") {
+      new Notification("⚠️ Fin du Mois", {
+        body: `Chef... tu as dépensé ${pct}% de ton budget ce mois-ci. Doucement hein 😅`,
+        icon: "/favicon.ico",
+      });
+      localStorage.setItem("fdm_alerted_80_" + moisCourant, "1");
+    }
+    // Rappel quotidien — une fois par jour
+    const today = new Date().toDateString();
+    const lastReminder = localStorage.getItem("fdm_daily_reminder");
+    if (lastReminder !== today && Notification.permission === "granted") {
+      const heure = new Date().getHours();
+      if (heure >= 19) { // Rappel le soir après 19h
+        new Notification("💰 Fin du Mois — Rappel", {
+          body: "N'oublie pas de saisir tes dépenses d'aujourd'hui !",
+          icon: "/favicon.ico",
+        });
+        localStorage.setItem("fdm_daily_reminder", today);
+      }
+    }
+  }, [depenses, entrees, config]);
 
   return (
     <>
@@ -1080,11 +1462,14 @@ export default function App() {
           config={config}
           depenses={depenses}
           entrees={entrees}
+          historique={historique}
           onAddExpense={handleAddExpense}
           onAddEntree={handleAddEntree}
           onDeleteExpense={handleDeleteExpense}
           onDeleteEntree={handleDeleteEntree}
           onReset={handleReset}
+          isPremium={isPremium}
+          onUnlock={unlock}
         />
       ) : (
         <OnboardingScreen onStart={handleStart} />
