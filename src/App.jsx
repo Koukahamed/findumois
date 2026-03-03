@@ -24,18 +24,18 @@ const INCOME_SOURCES = [
 
 const MESSAGES = {
   safe: [
-    "Tu gères bien djai ! 💪",
-    "Chef, tu es sérieux avec ça 🎯",
+    "Tu gères bien ton djai ! 💪",
+    "Chef(fe), tu es sérieux avec ça 🎯",
     "Budget sous contrôle, on valide ! ✅",
   ],
   warning: [
-    "Chef... doucement 😅",
+    "Chef(fe)... doucement 😅",
     "Hum hum... tu commences à forcer là 👀",
     "Attention hein, on n'est pas encore fin du mois 😬",
   ],
   danger: [
-    "Fin du mois va être sport... 🔴",
-    "Mon ami, il faut reposer la main là 😭",
+    "Fin du mois va être cardio... 🔴",
+    "Mon ami(e), il faut reposer la main là 😭",
     "Dieu seul sait comment tu vas finir ce mois 😂",
   ],
 };
@@ -803,7 +803,7 @@ function Dashboard({ config, depenses, entrees, onAddExpense, onAddEntree, onDel
           </span>
         </div>
         <p style={styles.statusMessage}>{statusMessage}</p>
-        
+
         {/* Progress ring area */}
         <div style={styles.progressWrap}>
           <div style={styles.progressTrack}>
